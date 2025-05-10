@@ -1,7 +1,9 @@
 import secrets
 import base64
 from argon2.low_level import hash_secret_raw, Type
+from argon2 import PasswordHasher
 from cryptography.fernet import Fernet
+import string
 
 def GenSalt() -> bytes :
     """
@@ -12,15 +14,13 @@ def GenSalt() -> bytes :
     with open("salt.bin","wb") as file:
         file.write(Salt)
     return Salt
-
 def GetSalt() -> bytes :
     """
     That is return salt from file that stored before
     """
     with open("salt.bin","rb") as file:
         Salt = file.read()
-    return Salt
-    
+    return Salt   
 def GenKey(MasterPass :str,Salt: bytes) -> bytes :
     """
     That generate a key by argon Algorithm
@@ -35,15 +35,8 @@ def GenKey(MasterPass :str,Salt: bytes) -> bytes :
         hash_len=32,              
         type=Type.ID                     
     )
-    return Key
-def GetKeyBase64(key: bytes) -> str :
-    """
-    Convert a key From Hex/bytes To Base64
-    And return it as string
-    """
-    Sqlcipher_pass = base64.b64encode(key).decode()
+    Sqlcipher_pass = base64.b64encode(Key)
     return Sqlcipher_pass
-
 def Encrypt_Password(password: str,key: bytes) -> bytes :
     """
     That is Encrypt a password 
@@ -59,7 +52,24 @@ def Decrypt_Password(encrypt_Password: bytes,key: bytes) -> str :
     """
     Cipher = Fernet(key)
     password = Cipher.decrypt(encrypt_Password)
-    return password.decode()
-    
-
-    
+    return password.decode()    
+def Generate_Password() -> str:
+    choices = string.ascii_letters + string.digits +string.punctuation
+    while True:
+        password = "".join(secrets.choice(choices) for i in range(secrets.choice(range(20,41))))
+        if ( any(c.islower() for c in password)
+            and any(c.isupper() for c in password)
+            and sum(c.isdigit() for c in password)>=3
+            and any(c in string.punctuation for c in password)):
+            break
+    return password 
+def GenToke(MasterPassword: str) -> str:
+    ph = PasswordHasher()
+    hased = ph.hash(MasterPassword)
+    return hased
+def verify_MasterPass(currentPassword: str,StoredPassword: str) -> bool:
+    ph = PasswordHasher()
+    try :
+        return ph.verify(StoredPassword,currentPassword)    
+    except:
+        return False
