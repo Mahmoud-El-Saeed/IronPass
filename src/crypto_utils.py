@@ -63,13 +63,13 @@ def Generate_Password() -> str:
             and any(c in string.punctuation for c in password)):
             break
     return password 
-def GenToke(MasterPassword: str) -> str:
+def GenTokin(MasterPassword: str) -> str:
     ph = PasswordHasher()
     hased = ph.hash(MasterPassword)
     return hased
 def verify_MasterPass(currentPassword: str,StoredPassword: str) -> bool:
     ph = PasswordHasher()
     try :
-        return ph.verify(StoredPassword,currentPassword)    
+        return bool(ph.verify(StoredPassword,currentPassword))    
     except:
         return False

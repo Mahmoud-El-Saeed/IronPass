@@ -67,7 +67,11 @@ def Show_Options() -> str :
     print("3. Delete password")
     print("4. Add Password")
     print("5. Exit")
+    print()
     choice = input("Select option: ").strip()
     return choice
 
+def inputMasterPass() -> str:
+    password = getpass.getpass("Master Password: ").strip()
+    return password    
 

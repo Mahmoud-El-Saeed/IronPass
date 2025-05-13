@@ -18,3 +18,11 @@ A secure and user-friendly password management system with the following feature
     - Command-Line Interface (CLI)
     - Graphical User Interface (GUI)
 """
+from src import * 
+
+def main():
+    iron_pass = IronPass()
+    iron_pass.Start_Cli()
+
+if __name__ == "__main__":
+    main()

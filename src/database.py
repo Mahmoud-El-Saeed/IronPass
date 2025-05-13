@@ -25,7 +25,7 @@ def GetTokin() -> str:
         "SELECT token FROM auth")
     res = cur.fetchone()
     conn.close()
-    return res
+    return res[0] if res else None
 def Store_Password(site_name: str,password: bytes ):
     try :
         conn = sqlite3.connect("Main.db")
@@ -47,3 +47,15 @@ def Showing_Password(site_name: str):
     res = cur.fetchone()
     conn.close()
     return res
+def Deleting_Password(site_name):
+    conn = sqlite3.connect("Main.db")
+    cur = conn.cursor()
+    cur.execute(
+        "DELETE FROM passwords WHERE LOWER(site_name) = LOWER(?)",(site_name,))
+    if cur.rowcount == 0:
+        print(f"[✕] There is no password for '{site_name}'.")
+        conn.close()
+        return
+    conn.commit()
+    print(f"[✓] Password for '{site_name}' Deleted successfully.")
+    conn.close()
