@@ -11,14 +11,14 @@ def GenSalt() -> bytes :
     And return it 
     """
     Salt = secrets.token_bytes(32)
-    with open("salt.bin","wb") as file:
+    with open(".salt.bin","wb") as file:
         file.write(Salt)
     return Salt
 def GetSalt() -> bytes :
     """
     That is return salt from file that stored before
     """
-    with open("salt.bin","rb") as file:
+    with open(".salt.bin","rb") as file:
         Salt = file.read()
     return Salt   
 def GenKey(MasterPass :str,Salt: bytes) -> bytes :
@@ -29,8 +29,8 @@ def GenKey(MasterPass :str,Salt: bytes) -> bytes :
     Key = hash_secret_raw(
         secret=MasterPass.encode(),  
         salt=Salt,         
-        time_cost=3,
-        memory_cost=65536,
+        time_cost=4,
+        memory_cost=131072,
         parallelism=4,
         hash_len=32,              
         type=Type.ID                     
@@ -71,5 +71,5 @@ def verify_MasterPass(currentPassword: str,StoredPassword: str) -> bool:
     ph = PasswordHasher()
     try :
         return bool(ph.verify(StoredPassword,currentPassword))    
-    except:
+    except  :
         return False

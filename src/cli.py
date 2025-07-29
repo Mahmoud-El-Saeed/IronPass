@@ -26,15 +26,36 @@ def input_New_MasterPass() -> str | None :
             print()
 
 def input_SiteName() -> str : 
+    print("input Site Name like (Google - github) not (Google.com - Github.com)")
     while True:
         site = input("Site Name: ").strip()
         if site:
             return site
         print("Site name cannot be empty.")
 
+def input_UserName() -> str : 
+    while True:
+        site = input("User Name: ").strip()
+        if site:
+            return site
+        print("Site name cannot be empty.")
+
 def input_Password() -> str | None:
     while True:
-        password = getpass.getpass("Password: ").strip()
+        tries = 0
+        password = ""
+        while tries < 5:
+            password = getpass.getpass("Password: ").strip()
+            confirm_password = getpass.getpass("Confirm Password: ").strip()
+            if confirm_password == password:
+                break
+            else:
+                tries += 1
+                print(f"Password doesn't match. Attempts left: { 5 - tries}")
+                print()
+        if confirm_password != password :
+            return None
+        
         if not re.match(PASSWORD_PATTERN, password):
             check = input(
                 "The password is weak.\n"
@@ -46,27 +67,17 @@ def input_Password() -> str | None:
                 return None  
             else:
                 print("Warning: You're saving a weak password!")
-        tries = 0
-        max_tries = 5
-        while tries < max_tries:
-            confirm_password = getpass.getpass("Confirm Password: ").strip()
-            if confirm_password == password:
                 return password
-            else:
-                tries += 1
-                print(f"Password doesn't match. Attempts left: {max_tries - tries}")
-                print()
-        print("Too many failed attempts. Please try again later.")
-        return None
 
 def Show_Options() -> str : 
 
     print("\n=== Main Menu ===")
     print("1. Generate new password")
-    print("2. Retrieve password")
-    print("3. Delete password")
-    print("4. Add Password")
-    print("5. Exit")
+    print("2. Show password")
+    print("3. Show All passwords")
+    print("4. Delete password")
+    print("5. Add Password")
+    print("6. Exit")
     print()
     choice = input("Select option: ").strip()
     return choice
