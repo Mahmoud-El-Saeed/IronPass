@@ -75,7 +75,7 @@ def Deleting_Password(site_name: str, username: str) -> bool:
 def GetAllPasswords():
     conn = sqlite3.connect(".Main.db")
     cur = conn.cursor()
-    cur.execute("SELECT id, site_name, username, encrypted_password FROM passwords")
+    cur.execute("SELECT  site_name, username, encrypted_password FROM passwords")
     results = cur.fetchall()
     conn.close()
     return results

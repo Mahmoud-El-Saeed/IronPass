@@ -63,8 +63,8 @@ class IronPass():
         
         decrypt_Passwords = []
         for password in all_encrypted_password:
-            decrypt_Password = Decrypt_Password(password[3] , self.key)
-            decrypt_Passwords.append((password[0],password[1],password[2], decrypt_Password))
+            decrypt_Password = Decrypt_Password(password[2] , self.key)
+            decrypt_Passwords.append((password[0],password[1],decrypt_Password))
         
         return decrypt_Passwords
         
