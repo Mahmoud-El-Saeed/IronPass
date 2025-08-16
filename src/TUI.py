@@ -1,3 +1,4 @@
+import os
 from rich.table import Table
 from textual.app import App, ComposeResult
 from textual.screen import Screen
@@ -5,18 +6,22 @@ from textual.widgets import Header, Footer, Static, Button, Input , OptionList
 from textual.containers import Horizontal  , CenterMiddle
 import pyperclip 
 import re
-from crypto_utils import Generate_Password
+from .crypto_utils import Generate_Password
 
 
 PASSWORD_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{9,}$'
-
+FILE_PATH = os.path.join(os.path.dirname(__file__), "welcome.txt")
 
 
 class FirstTimeScreen(Screen):
+    def __init__(self, ironpass):
+        super().__init__()
+        self.ironpass = ironpass
+        
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True,time_format="%H:%M:%S")
         yield Footer()
-        with open("welcome.txt", "r") as file:
+        with open(FILE_PATH, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with Horizontal():
@@ -56,12 +61,17 @@ class FirstTimeScreen(Screen):
                 return
 
             message_widget.update("[green]Password accepted! Returning...[/green]")
+            self.ironpass.setup_first_time(master_password)
+            self.app.push_screen(OptionsMenu(self.ironpass))
 
 class ReturningUserScreen(Screen):
+    def __init__(self, ironpass):
+        super().__init__()
+        self.ironpass = ironpass
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, time_format="%I:%M:%S")
         yield Footer()
-        with open("welcome.txt", "r") as file:
+        with open(FILE_PATH, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with Horizontal():
@@ -81,18 +91,20 @@ class ReturningUserScreen(Screen):
         elif event.button.id == "Submit_button":
             master_password_widget = self.query_one("#master_password_input", Input)
             master_password = master_password_widget.value
-
-            if not re.match(PASSWORD_PATTERN, master_password):
-                message_widget.update("[red]Invalid password format![/red]")
-                return
-
-            message_widget.update("[green]Password accepted! Returning...[/green]")
+            if self.ironpass.unlock_app(master_password):
+                self.app.push_screen(OptionsMenu(self.ironpass))
+            else:
+                message_widget.update("[red]Invalid password![/red]")
 
 class OptionsMenu(Screen):
+    def __init__(self, ironpass):
+        super().__init__()
+        self.ironpass = ironpass
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Footer()
-        with open("welcome.txt", "r") as file:
+        with open(FILE_PATH, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with CenterMiddle(classes="options-container"):
@@ -102,22 +114,25 @@ class OptionsMenu(Screen):
 
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "add_password":
-            self.app.push_screen(AddPasswordScreen())
+            self.app.push_screen(AddPasswordScreen(self.ironpass))
         elif event.button.id == "show_password":
-            self.app.push_screen(ShowPasswordScreen())
+            self.app.push_screen(ShowPasswordScreen(self.ironpass))
         elif event.button.id == "delete_password":
-            self.app.push_screen(DeletePasswordScreen())
+            self.app.push_screen(DeletePasswordScreen(self.ironpass))
 
 class AddPasswordScreen(Screen):
+    def __init__(self, ironpass):
+        super().__init__()
+        self.ironpass = ironpass
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Footer()
-        with open("welcome.txt", "r") as file:
+        with open(FILE_PATH, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with CenterMiddle(classes="SiteName_UserName"):
-            yield Input(placeholder="Enter Your Site Name")
-            yield Input(placeholder="Enter Your Username")
+            yield Input(placeholder="Enter Your Site Name", id="site_name_input")
+            yield Input(placeholder="Enter Your Username", id="user_name_input")
             with Horizontal():
                 yield Input(placeholder="Enter Your Password", password=True, id="master_password_input")
                 yield Button("Generate", id="generate_password", variant="primary")
@@ -125,8 +140,10 @@ class AddPasswordScreen(Screen):
 
         yield Button("Submit", variant="success", id="Submit_button")
         yield Button("Exit", id="Exit_id")
+        yield Static("", id="message_area", classes="message")
     
     def on_button_pressed(self, event: Button.Pressed):
+        message_widget = self.query_one("#message_area", Static)
         if event.button.id == "Exit_id":
             self.app.pop_screen()
         elif event.button.id == "toggle_password":
@@ -136,34 +153,48 @@ class AddPasswordScreen(Screen):
         elif event.button.id == "generate_password":
             pw_input = self.query_one("#master_password_input", Input)
             pw_input.value = Generate_Password()
+        elif event.button.id == "Submit_button":
+            site_name_input = self.query_one("#site_name_input", Input)
+            user_name_input = self.query_one("#user_name_input", Input)
+            password_input = self.query_one("#master_password_input", Input)
+
+            site_name = site_name_input.value.strip().lower()
+            user_name = user_name_input.value.strip().lower()
+            password = password_input.value.strip()
+            if not site_name or not user_name or not password:
+                message_widget.update("[red]Please fill in all fields.[/red]")
+            elif not re.match(PASSWORD_PATTERN, password):
+                message_widget.update(
+                "[red]Password must be at least 9 chars, include upper, lower, digit, and special char![/red]")
+            elif self.ironpass.add_password(site_name, user_name, password):
+                pyperclip.copy(password)
+                message_widget.update(
+                "[green]Password added successfully![/green] [bold yellow] The password has been copied to your clipboard.[/bold yellow]")
+                site_name_input.value = ""
+                user_name_input.value = ""
+                password_input.value = ""
+            else:
+                message_widget.update("[red]This username and site combination already exists.[/red]")
 
 class ShowPasswordScreen(Screen):
-    Fake_data = [
-        ("google", "mahmoud", "7hn5|TJlr5ilwReT4;:H$@ErW0ZIiwU0~'l5@k"),
-        ("github", "ali", "-^immzZ*2N^dtdt9F>6+K!n0RlsLq%'(o"),
-        ("google", "ali", "|iq<gvszR,1cCSz\\tC$R}F7wq.c\\G02z>45XC]I"),
-        ("facebook", "ali", "Fb@c00k1e!"),
-        ("twitter", "ali", "Tw!tt3rP@ssw0rd"),
-        ("linkedin", "ali", "LiNk3dInP@ssw0rd"),
-        ("snapchat", "ali", "Sn@pCh@tP@ssw0rd")
-    ]
 
-    def __init__(self):
+    def __init__(self, ironpass):
         super().__init__()
+        self.ironpass = ironpass
         self._selected_index = None
         self._show_password = False
-        self._filtered_data = list(self.Fake_data) 
+        self._filtered_data = self.ironpass.show_All_passwords() 
 
     @staticmethod
-    def password_entry(service: str, username: str, password: str, hide=True) -> Table:
-        table = Table(title=f"{service} ({username})", expand=True)
-        table.add_column("Service")
+    def password_entry(Site_name: str, username: str, password: str, hide=True) -> Table:
+        table = Table(title=f"{Site_name} ({username})", expand=True)
+        table.add_column("Site Name")
         table.add_column("Username")
         table.add_column("Password")
         if hide:
-            table.add_row(service, username, "*" * len(password))
+            table.add_row(Site_name, username, "*" * len(password))
         else:
-            table.add_row(service, username, password)
+            table.add_row(Site_name, username, password)
         return table
 
     def compose(self) -> ComposeResult:
@@ -192,11 +223,11 @@ class ShowPasswordScreen(Screen):
         query = event.value.strip().lower()
         if query:
             self._filtered_data = [
-                row for row in self.Fake_data
+                row for row in  self.ironpass.show_All_passwords() 
                 if row[0].lower().startswith(query) or row[1].lower().startswith(query)
             ]
         else:
-            self._filtered_data = list(self.Fake_data)
+            self._filtered_data =  self.ironpass.show_All_passwords() 
         self._selected_index = None
         self.btn_show.disabled = True
         self.btn_copy.disabled = True
@@ -223,32 +254,24 @@ class ShowPasswordScreen(Screen):
             pyperclip.copy(password)
 
 class DeletePasswordScreen(Screen):
-    Fake_data = [
-        ("google", "mahmoud", "7hn5|TJlr5ilwReT4;:H$@ErW0ZIiwU0~'l5@k"),
-        ("github", "ali", "-^immzZ*2N^dtdt9F>6+K!n0RlsLq%'(o"),
-        ("google", "ali", "|iq<gvszR,1cCSz\\tC$R}F7wq.c\\G02z>45XC]I"),
-        ("facebook", "ali", "Fb@c00k1e!"),
-        ("twitter", "ali", "Tw!tt3rP@ssw0rd"),
-        ("linkedin", "ali", "LiNk3dInP@ssw0rd"),
-        ("snapchat", "ali", "Sn@pCh@tP@ssw0rd")
-    ]
 
-    def __init__(self):
+    def __init__(self, ironpass):
         super().__init__()
+        self.ironpass = ironpass
         self._selected_index = None
         self._show_password = False
-        self._filtered_data = list(self.Fake_data) 
+        self._filtered_data = self.ironpass.show_All_passwords()
 
     @staticmethod
-    def password_entry(service: str, username: str, password: str, hide=True) -> Table:
-        table = Table(title=f"{service} ({username})", expand=True)
-        table.add_column("Service")
+    def password_entry(Site_name: str, username: str, password: str, hide=True) -> Table:
+        table = Table(title=f"{Site_name} ({username})", expand=True)
+        table.add_column("Site Name")
         table.add_column("Username")
         table.add_column("Password")
         if hide:
-            table.add_row(service, username, "*" * len(password))
+            table.add_row(Site_name, username, "*" * len(password))
         else:
-            table.add_row(service, username, password)
+            table.add_row(Site_name, username, password)
         return table
 
     def compose(self) -> ComposeResult:
@@ -277,11 +300,11 @@ class DeletePasswordScreen(Screen):
         query = event.value.strip().lower()
         if query:
             self._filtered_data = [
-                row for row in self.Fake_data
+                row for row in self.ironpass.show_All_passwords()
                 if row[0].lower().startswith(query) or row[1].lower().startswith(query)
             ]
         else:
-            self._filtered_data = list(self.Fake_data)
+            self._filtered_data = self.ironpass.show_All_passwords()
         self._selected_index = None
         self.btn_show.disabled = True
         self.delete_btn.disabled = True
@@ -305,7 +328,7 @@ class DeletePasswordScreen(Screen):
             self.refresh_option_list()
         elif event.button.id == "delete_btn" and self._selected_index is not None:
             row = self._filtered_data.pop(self._selected_index)
-            self.Fake_data.remove(row)
+            self.ironpass.delete_password(row[0], row[1])
             self._selected_index = None
             self._show_password = False
             self.btn_show.label = "Show"
@@ -315,11 +338,12 @@ class DeletePasswordScreen(Screen):
 
 class IronpassApp(App):
     CSS_PATH = "style.tcss"
-
+    def __init__(self, ironpass):
+        super().__init__()
+        self.ironpass = ironpass
     def on_mount(self) -> None:
         self.title = "Ironpass"
-        self.push_screen(OptionsMenu())
-
-if __name__ == "__main__":
-    app = IronpassApp()
-    app.run()
+        if self.ironpass.check_first_time():
+            self.push_screen(FirstTimeScreen(self.ironpass))
+        else:
+            self.push_screen(ReturningUserScreen(self.ironpass))

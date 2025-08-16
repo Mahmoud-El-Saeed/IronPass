@@ -47,7 +47,7 @@ Horizontal Input {
 
 .message {
     text-align: center;
-    padding: 1;
+    padding: 0;
 }
 
 

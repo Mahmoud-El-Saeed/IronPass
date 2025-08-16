@@ -17,6 +17,7 @@ A secure and user-friendly password management system with the following feature
 - Supports two interfaces:
     - Command-Line Interface (CLI)
     - Graphical User Interface (GUI)
+    - Terminal User Interface (TUI)
 """
 import sys
 from src import *
@@ -24,10 +25,15 @@ from src import *
 
 def main():
     iron_pass = IronPass()
-    if "--gui" in sys.argv:
+
+    if "--tui"  in sys.argv:
+        iron_pass.Start_TUI()
+    elif "--cli"in sys.argv:
+        iron_pass.Start_Cli()
+    elif "--gui" in sys.argv:
         iron_pass.Start_Gui()
     else:
-        iron_pass.Start_Cli()
+        iron_pass.Start_TUI()
 
 if __name__ == "__main__":
     main()

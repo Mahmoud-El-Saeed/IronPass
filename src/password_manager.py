@@ -6,6 +6,7 @@ from .database import *
 from .cli import *
 from .gui import *
 from .gui import MainWindowIRON
+from .TUI import IronpassApp
 
 class IronPass():
     
@@ -73,8 +74,14 @@ class IronPass():
         if self.key is None : return False
         return Deleting_Password(site_name , user_name)
 
-    
-    
+
+
+    def Start_TUI(self):
+        app = IronpassApp(self)
+
+        app.run()
+
+
 
     def Start_Gui(self):
 
