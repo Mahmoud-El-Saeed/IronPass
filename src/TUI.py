@@ -10,30 +10,70 @@ from .crypto_utils import Generate_Password
 
 
 PASSWORD_PATTERN = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{9,}$'
-FILE_PATH = os.path.join(os.path.dirname(__file__), "welcome.txt")
+FILE_PATH1 = os.path.join(os.path.dirname(__file__), "welcome.txt")
+FILE_PATH2 = os.path.join(os.path.dirname(__file__), "adding.txt")
 
 
 class FirstTimeScreen(Screen):
     def __init__(self, ironpass):
         super().__init__()
         self.ironpass = ironpass
+    BINDINGS = [
+        ("up", "focus_previous", "Focus Up"),
+        ("down", "focus_next", "Focus Down"),
+        
+    ]
+    def action_focus_next(self) -> None:
+        self.focus_next()
+    def action_focus_previous(self) -> None:
+        self.focus_previous()
         
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True,time_format="%H:%M:%S")
+        yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Footer()
-        with open(FILE_PATH, "r") as file:
+        with open(FILE_PATH1, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with Horizontal():
             yield Input(placeholder="Enter your Master password", id="master_password_input", password=True)
-            yield Button("Show", id="toggle_master")
+            yield Button("Show", id="toggle_master",classes="copy")
         with Horizontal():
             yield Input(placeholder="Confirm your Master password", id="confirm_password_input", password=True)
-            yield Button("Show", id="toggle_confirm")
+            yield Button("Show", id="toggle_confirm",classes="copy")
 
         yield Button("Submit", variant="success", id="Submit_button")
         yield Static("", id="message_area", classes="message")
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "master_password_input":
+            self.focus_next()
+            self.focus_next()
+        if event.input.id == "confirm_password_input":
+            self.do_submit(self.query_one("#message_area", Static))
 
+
+    def do_submit(self,message_widget):
+        if not self.query_one("#master_password_input", Input).value \
+            or not self.query_one("#confirm_password_input", Input).value:
+            message_widget.update("[red]You must fill in all fields![/red]")
+            return
+        master_password_widget = self.query_one("#master_password_input", Input)
+        master_password = master_password_widget.value
+        confirm_password_widget = self.query_one("#confirm_password_input", Input)
+        confirm_password = confirm_password_widget.value
+
+        if master_password != confirm_password:
+            message_widget.update("[red]Master passwords do not match![/red]")
+            return
+
+        if not re.match(PASSWORD_PATTERN, master_password):
+            message_widget.update("[red]Password must be at least 9 chars, include upper, lower, digit, and special char![/red]")
+            return
+
+        message_widget.update("[green]Password accepted! Returning...[/green]")
+        self.ironpass.setup_first_time(master_password)
+        self.app.push_screen(OptionsMenu(self.ironpass))
+    
+    
     def on_button_pressed(self, event: Button.Pressed):
         message_widget = self.query_one("#message_area", Static)
 
@@ -47,22 +87,7 @@ class FirstTimeScreen(Screen):
             event.button.label = "Hide" if not pw_input.password else "Show"
 
         elif event.button.id == "Submit_button":
-            master_password_widget = self.query_one("#master_password_input", Input)
-            master_password = master_password_widget.value
-            confirm_password_widget = self.query_one("#confirm_password_input", Input)
-            confirm_password = confirm_password_widget.value
-
-            if master_password != confirm_password:
-                message_widget.update("[red]Master passwords do not match![/red]")
-                return
-
-            if not re.match(PASSWORD_PATTERN, master_password):
-                message_widget.update("[red]Password must be at least 9 chars, include upper, lower, digit, and special char![/red]")
-                return
-
-            message_widget.update("[green]Password accepted! Returning...[/green]")
-            self.ironpass.setup_first_time(master_password)
-            self.app.push_screen(OptionsMenu(self.ironpass))
+            self.do_submit(message_widget)
 
 class ReturningUserScreen(Screen):
     def __init__(self, ironpass):
@@ -71,16 +96,25 @@ class ReturningUserScreen(Screen):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True, time_format="%I:%M:%S")
         yield Footer()
-        with open(FILE_PATH, "r") as file:
+        with open(FILE_PATH1, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with Horizontal():
             yield Input(placeholder="Enter your Master password", id="master_password_input", password=True)
-            yield Button("Show", id="toggle_master")
+            yield Button("Show", id="toggle_master",classes="copy")
 
         yield Button("Submit", variant="success", id="Submit_button")
         yield Static("", id="message_area", classes="message")
-
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "master_password_input":
+            self.do_submit(self.query_one("#message_area", Static))
+    def do_submit(self, message_widget):
+        master_password_widget = self.query_one("#master_password_input", Input)
+        master_password = master_password_widget.value
+        if self.ironpass.unlock_app(master_password):
+            self.app.push_screen(OptionsMenu(self.ironpass))
+        else:
+            message_widget.update("[red]Invalid password![/red]")
     def on_button_pressed(self, event: Button.Pressed):
         message_widget = self.query_one("#message_area", Static)
 
@@ -89,12 +123,7 @@ class ReturningUserScreen(Screen):
             pw_input.password = not pw_input.password
             event.button.label = "Hide" if not pw_input.password else "Show"
         elif event.button.id == "Submit_button":
-            master_password_widget = self.query_one("#master_password_input", Input)
-            master_password = master_password_widget.value
-            if self.ironpass.unlock_app(master_password):
-                self.app.push_screen(OptionsMenu(self.ironpass))
-            else:
-                message_widget.update("[red]Invalid password![/red]")
+            self.do_submit(message_widget)
 
 class OptionsMenu(Screen):
     def __init__(self, ironpass):
@@ -104,7 +133,7 @@ class OptionsMenu(Screen):
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Footer()
-        with open(FILE_PATH, "r") as file:
+        with open(FILE_PATH1, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with CenterMiddle(classes="options-container"):
@@ -124,10 +153,11 @@ class AddPasswordScreen(Screen):
     def __init__(self, ironpass):
         super().__init__()
         self.ironpass = ironpass
+
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Footer()
-        with open(FILE_PATH, "r") as file:
+        with open(FILE_PATH2, "r") as file:
             ascii_art = file.read()
         yield Static(ascii_art, classes="ascii-logo")
         with CenterMiddle(classes="SiteName_UserName"):
@@ -138,22 +168,19 @@ class AddPasswordScreen(Screen):
                 yield Button("Generate", id="generate_password", variant="primary")
                 yield Button("Show", id="toggle_password", variant="warning")
 
-        yield Button("Submit", variant="success", id="Submit_button")
+        yield Button("Submit", variant="success", id="Submit_add_button")
         yield Button("Exit", id="Exit_id")
         yield Static("", id="message_area", classes="message")
-    
-    def on_button_pressed(self, event: Button.Pressed):
-        message_widget = self.query_one("#message_area", Static)
-        if event.button.id == "Exit_id":
-            self.app.pop_screen()
-        elif event.button.id == "toggle_password":
-            pw_input = self.query_one("#master_password_input", Input)
-            pw_input.password = not pw_input.password
-            event.button.label = "Hide" if not pw_input.password else "Show"
-        elif event.button.id == "generate_password":
-            pw_input = self.query_one("#master_password_input", Input)
-            pw_input.value = Generate_Password()
-        elif event.button.id == "Submit_button":
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id =="site_name_input":
+            self.focus_next()
+        elif event.input.id == "user_name_input":
+            self.focus_next()
+        elif event.input.id == "master_password_input":
+            self.do_submit(self.query_one("#message_area", Static))
+            
+            
+    def do_submit(self, message_widget):
             site_name_input = self.query_one("#site_name_input", Input)
             user_name_input = self.query_one("#user_name_input", Input)
             password_input = self.query_one("#master_password_input", Input)
@@ -175,6 +202,21 @@ class AddPasswordScreen(Screen):
                 password_input.value = ""
             else:
                 message_widget.update("[red]This username and site combination already exists.[/red]")
+    
+
+    def on_button_pressed(self, event: Button.Pressed):
+        message_widget = self.query_one("#message_area", Static)
+        if event.button.id == "Exit_id":
+            self.app.pop_screen()
+        elif event.button.id == "toggle_password":
+            pw_input = self.query_one("#master_password_input", Input)
+            pw_input.password = not pw_input.password
+            event.button.label = "Hide" if not pw_input.password else "Show"
+        elif event.button.id == "generate_password":
+            pw_input = self.query_one("#master_password_input", Input)
+            pw_input.value = Generate_Password()
+        elif event.button.id == "Submit_add_button":
+            self.do_submit(message_widget)
 
 class ShowPasswordScreen(Screen):
 
@@ -198,7 +240,7 @@ class ShowPasswordScreen(Screen):
         return table
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Static("🔐 Show Passwords", classes="title")
         yield Input(id="search_input", placeholder="Search...")
         self.option_list = OptionList(
@@ -275,7 +317,7 @@ class DeletePasswordScreen(Screen):
         return table
 
     def compose(self) -> ComposeResult:
-        yield Header(show_clock=True)
+        yield Header(show_clock=True,time_format="%I:%M:%S")
         yield Static("🔐 Delete Passwords", classes="title")
         yield Input(id="search_input", placeholder="Search...")
         self.option_list = OptionList(
@@ -341,6 +383,11 @@ class IronpassApp(App):
     def __init__(self, ironpass):
         super().__init__()
         self.ironpass = ironpass
+    BINDINGS = [
+        ("ctrl+q", "quit", "Quit"),
+    ]
+    
+    
     def on_mount(self) -> None:
         self.title = "Ironpass"
         if self.ironpass.check_first_time():

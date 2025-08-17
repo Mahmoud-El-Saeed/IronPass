@@ -33,14 +33,7 @@ class IronPass():
             return True
         except:
             return False
-        # TODO this part i think it doesn't matter because if the password is woring 
-        # the try and except do every thing 
-        # i will reviewed later
-        if tokin and verify_MasterPass(master_password , tokin):
-            salt = GetSalt()
-            self.key  = GenKey(master_password , salt)
-            return True
-        return False
+
 
     
     
