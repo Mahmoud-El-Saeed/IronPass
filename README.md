@@ -1,6 +1,7 @@
-# $$  🔐 IronPass $$ 
 
 <div align="center">
+
+#   🔐 IronPass 
 
 <img src="images/logo.png" alt="IronPass Logo" width="200"/>
 
